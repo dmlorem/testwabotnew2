@@ -1,0 +1,24 @@
+botname = "Lorem bot"
+
+# List of bot owners. Only numbers, formatted as strings. Example: ["55987654321"]
+owners = []
+
+# Command prefix for the bot
+cmdprefix = "/"
+
+# Default sticker title and description
+# Available placeholders:
+# $hour  - current hour (e.g., 3:04PM)
+# $date  - current date (e.g., 02/01/2006)
+# $name  - name of the user who triggered the command
+stickertitle = "Created by $name"
+stickerauthor = "$botname"
+
+# Enable or disable reading all received messages
+readmessages = true
+
+# Delay (in milliseconds) before the same user can execute another command
+commandsdelay = 2000
+
+# Use pairing code instead of QR code to connect
+pairwithcode = false
