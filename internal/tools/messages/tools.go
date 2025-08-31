@@ -50,8 +50,8 @@ func GetMentionedJIDS(message *waE2E.Message) []string {
 		message.VideoMessage.GetContextInfo,
 	}
 
-	for _, getContext := range contexts {
-		if m := getContext(); m != nil {
+	for _, f := range contexts {
+		if m := f(); m != nil {
 			if m.MentionedJID != nil {
 				return m.MentionedJID
 			}
@@ -118,15 +118,9 @@ func GetQuotedJid(m *events.Message) (jid types.JID, err error) {
 		if m.Message.ExtendedTextMessage.ContextInfo.Participant != nil {
 			jidString := *m.Message.ExtendedTextMessage.ContextInfo.Participant
 			jid, err = types.ParseJID(jidString)
-			if err != nil {
-				return
-			}
 		} else if len(m.Message.ExtendedTextMessage.ContextInfo.MentionedJID) > 0 {
 			jidString := m.Message.ExtendedTextMessage.ContextInfo.MentionedJID[0]
 			jid, err = types.ParseJID(jidString)
-			if err != nil {
-				return
-			}
 		}
 	}
 	return

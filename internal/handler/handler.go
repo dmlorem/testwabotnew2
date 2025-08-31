@@ -22,7 +22,7 @@ type EventHandler struct {
 	Client    *whatsmeow.Client
 	Container *sqlstore.Container
 	UserDB    *database.DBInstance
-	Logger    *zerolog.Logger
+	Log       *zerolog.Logger
 	WaLogger  waLog.Logger
 
 	cmd                 *command.CommandList
@@ -51,7 +51,7 @@ func NewEventHandler(opts EventHandlerOptions) *EventHandler {
 		Client:    opts.Client,
 		Container: opts.Container,
 		UserDB:    opts.UserDB,
-		Logger:    opts.Logger,
+		Log:       opts.Logger,
 		WaLogger:  opts.WaLogger,
 
 		cmd:                 command.Default,

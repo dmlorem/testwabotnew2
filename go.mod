@@ -3,6 +3,7 @@ module meowabot
 go 1.25
 
 require (
+	github.com/hbakhtiyor/strsim v0.0.0-20190107154042-4d2bbb273edf
 	github.com/mdp/qrterminal/v3 v3.2.1
 	github.com/rs/zerolog v1.34.0
 	github.com/spf13/viper v1.20.1

@@ -34,7 +34,7 @@ func (i *EventHandler) handleGroupInfoChange(event *events.GroupInfo) {
 
 	groupInfo, err := i.UserDB.GetGroupInfo(event.JID.User)
 	if err != nil {
-		i.Logger.Error().Err(err).Str("GroupID", event.JID.User).Msg("Error retrieving group info from database")
+		i.Log.Error().Err(err).Str("GroupID", event.JID.User).Msg("Error retrieving group info from database")
 		return
 	}
 
@@ -70,7 +70,7 @@ func (i *EventHandler) handleGroupInfoChange(event *events.GroupInfo) {
 			if user.User == i.Client.Store.ID.User {
 				delete(i.groupInfoCache, event.JID.User)
 				if err := i.UserDB.DeleteGroupInfo(groupInfo); err != nil {
-					i.Logger.Error().Err(err).Str("GroupID", event.JID.String()).Msg("Error deleting row from group info")
+					i.Log.Error().Err(err).Str("GroupID", event.JID.String()).Msg("Error deleting row from group info")
 				}
 				return
 			}
@@ -80,11 +80,11 @@ func (i *EventHandler) handleGroupInfoChange(event *events.GroupInfo) {
 		for _, u := range participantsToRemove {
 			userInfo, err := i.UserDB.GetParticipant(groupMetadata.Info.Participants[u].JID.User, groupMetadata.Info.JID.User)
 			if err != nil {
-				i.Logger.Error().Err(err).Str("GroupID", groupMetadata.Info.JID.User).Str("User", groupMetadata.Info.Participants[u].JID.User).Msg("Error retrieving user from database")
+				i.Log.Error().Err(err).Str("GroupID", groupMetadata.Info.JID.User).Str("User", groupMetadata.Info.Participants[u].JID.User).Msg("Error retrieving user from database")
 				continue
 			}
 			if err = i.UserDB.DeleteParticipant(userInfo); err != nil {
-				i.Logger.Error().Err(err).Str("GroupID", groupMetadata.Info.JID.User).Str("User", groupMetadata.Info.Participants[u].JID.User).Msg("Error deleting user from database")
+				i.Log.Error().Err(err).Str("GroupID", groupMetadata.Info.JID.User).Str("User", groupMetadata.Info.Participants[u].JID.User).Msg("Error deleting user from database")
 			}
 			groupMetadata.Info.Participants = slices.Delete(groupMetadata.Info.Participants, u, u+1)
 		}
@@ -103,7 +103,7 @@ func (i *EventHandler) handleGroupInfoChange(event *events.GroupInfo) {
 				}
 				if !valid {
 					if _, err := i.Client.UpdateGroupParticipants(event.JID, []types.JID{user}, whatsmeow.ParticipantChangeRemove); err != nil {
-						i.Logger.Error().Str("ChatID", event.JID.String()).Str("UserID", user.String()).Msg("Error removing user")
+						i.Log.Error().Str("ChatID", event.JID.String()).Str("UserID", user.String()).Msg("Error removing user")
 					}
 					continue
 				}
@@ -111,7 +111,7 @@ func (i *EventHandler) handleGroupInfoChange(event *events.GroupInfo) {
 			if userInfo, err := i.UserDB.GetParticipant(user.User, event.JID.User); err != nil && userInfo.IsBlacklisted {
 				if isBotGroupAdmin {
 					if _, err := i.Client.UpdateGroupParticipants(event.JID, []types.JID{user}, whatsmeow.ParticipantChangeRemove); err != nil {
-						i.Logger.Error().Str("ChatID", event.JID.String()).Str("UserID", user.String()).Msg("Error removing blacklisted user")
+						i.Log.Error().Str("ChatID", event.JID.String()).Str("UserID", user.String()).Msg("Error removing blacklisted user")
 					}
 					continue
 				}

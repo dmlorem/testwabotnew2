@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"fmt"
+	"meowabot/internal/command"
 	"meowabot/internal/database"
 	tmsg "meowabot/internal/tools/messages"
 	"meowabot/internal/util"
@@ -10,7 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hbakhtiyor/strsim"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"github.com/rs/zerolog/log"
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
@@ -23,12 +26,12 @@ func (i *EventHandler) handleMessage(m *events.Message) {
 	messageBody, isValid := tmsg.GetMessageText(m.Message)
 	var prefix string = i.Config.CommandPrefix
 	var isCommand bool = strings.HasPrefix(messageBody, i.Config.CommandPrefix)
-	var command string
+	var commandName string
 	var commandArgs string
 	fmt.Println(commandArgs)
 	if isCommand {
-		command = util.NormalizeString(strings.ToLower(strings.Split(strings.TrimSpace(strings.TrimPrefix(messageBody, prefix)), " ")[0]))
-		commandArgs = strings.TrimSpace(messageBody[len(command)+len(prefix):])
+		commandName = util.NormalizeString(strings.ToLower(strings.Split(strings.TrimSpace(strings.TrimPrefix(messageBody, prefix)), " ")[0]))
+		commandArgs = strings.TrimSpace(messageBody[len(commandName)+len(prefix):])
 	}
 	var isOwner bool = slices.Contains(i.Config.OwnerNumbers, m.Info.Sender.User)
 	var isGroupAdmin bool
@@ -47,7 +50,7 @@ func (i *EventHandler) handleMessage(m *events.Message) {
 		var err error
 		userInfo, err = i.UserDB.GetUserInfo(m.Info.Sender.User)
 		if err != nil {
-			i.Logger.Error().Err(err).Str("User", m.Info.Sender.User).Msg("Error retrieving user from database")
+			i.Log.Error().Err(err).Str("User", m.Info.Sender.User).Msg("Error retrieving user from database")
 			return err
 		}
 		if userInfo.Name != m.Info.PushName {
@@ -59,7 +62,7 @@ func (i *EventHandler) handleMessage(m *events.Message) {
 
 		err = i.UserDB.SaveUserInfo(userInfo)
 		if err != nil {
-			i.Logger.Error().Err(err).Str("User", m.Info.Sender.User).Msg("Error saving user info")
+			i.Log.Error().Err(err).Str("User", m.Info.Sender.User).Msg("Error saving user info")
 			return err
 		}
 
@@ -75,7 +78,7 @@ func (i *EventHandler) handleMessage(m *events.Message) {
 			} else {
 				groupMetadata, err = i.Client.GetGroupInfo(m.Info.Chat)
 				if err != nil {
-					i.Logger.Error().Err(err).Str("GroupID", m.Info.Chat.String()).Msg("Error getting group metadata")
+					i.Log.Error().Err(err).Str("GroupID", m.Info.Chat.String()).Msg("Error getting group metadata")
 					return err
 				}
 				i.SetCachedGroupInfo(groupMetadata)
@@ -94,14 +97,14 @@ func (i *EventHandler) handleMessage(m *events.Message) {
 			// Group Info
 			groupInfo, err = i.UserDB.GetGroupInfo(m.Info.Chat.User)
 			if err != nil {
-				i.Logger.Error().Err(err).Str("Group", m.Info.Chat.String()).Msg("Error getting group from database")
+				i.Log.Error().Err(err).Str("Group", m.Info.Chat.String()).Msg("Error getting group from database")
 				return err
 			}
 
 			// Group Participant Info
 			participant, err = i.UserDB.GetParticipant(m.Info.Sender.User, m.Info.Chat.User)
 			if err != nil {
-				i.Logger.Error().Err(err).Str("Group", m.Info.Chat.String()).Str("User", m.Info.Sender.User).Msg("Error getting group participant from database")
+				i.Log.Error().Err(err).Str("Group", m.Info.Chat.String()).Str("User", m.Info.Sender.User).Msg("Error getting group participant from database")
 				return err
 			}
 
@@ -115,7 +118,7 @@ func (i *EventHandler) handleMessage(m *events.Message) {
 					if groupInfo.RemoveUser {
 						_, err = i.Client.UpdateGroupParticipants(m.Info.Chat, []types.JID{m.Info.Sender}, whatsmeow.ParticipantChangeRemove)
 						if err != nil {
-							i.Logger.Error().Err(err).Str("Group", m.Info.Chat.String()).Str("User", m.Info.Sender.User).Msg("Error removing group participant")
+							i.Log.Error().Err(err).Str("Group", m.Info.Chat.String()).Str("User", m.Info.Sender.User).Msg("Error removing group participant")
 							return err
 						}
 					}
@@ -136,7 +139,7 @@ func (i *EventHandler) handleMessage(m *events.Message) {
 
 			err = i.UserDB.SaveParticipant(participant)
 			if err != nil {
-				i.Logger.Error().Err(err).Str("Group", m.Info.Chat.String()).Str("User", m.Info.Sender.User).Msg("Error updating group participant info")
+				i.Log.Error().Err(err).Str("Group", m.Info.Chat.String()).Str("User", m.Info.Sender.User).Msg("Error updating group participant info")
 				return err
 			}
 		}
@@ -150,7 +153,7 @@ func (i *EventHandler) handleMessage(m *events.Message) {
 	{
 		if isCommand {
 			if t, ok := i.userLastCommandTime[m.Info.Sender.User]; ok && time.Since(t).Milliseconds() < i.Config.CommandsDelay && !isOwner {
-				logFields := i.Logger.Info().Str("Command", command).Str("User", m.Info.Sender.User)
+				logFields := i.Log.Info().Str("Command", commandName).Str("User", m.Info.Sender.User)
 				if m.Info.IsGroup {
 					logFields.Str("Group", groupMetadata.Name)
 				}
@@ -160,9 +163,9 @@ func (i *EventHandler) handleMessage(m *events.Message) {
 			i.userLastCommandTime[m.Info.Sender.User] = time.Now()
 		}
 
-		logFields := i.Logger.Info().Str("User", m.Info.Sender.User)
+		logFields := i.Log.Info().Str("User", m.Info.Sender.User)
 		if isCommand {
-			logFields.Str("Command", command)
+			logFields.Str("Command", commandName)
 		} else {
 			logFields.Str("Message", messageBody)
 		}
@@ -187,6 +190,115 @@ func (i *EventHandler) handleMessage(m *events.Message) {
 		localizer = GetLocalizer(userInfo.Language)
 	}
 
-	fmt.Println(localizer == nil)
+	if isCommand {
+		ctx := &command.CommandContext{
+			Client:    i.Client,
+			Config:    i.Config,
+			Msg:       m,
+			DB:        i.UserDB,
+			Body:      messageBody,
+			Args:      commandArgs,
+			Prefix:    prefix,
+			Command:   commandName,
+			Localizer: localizer,
+			Log:       i.Log,
+		}
+		cmd, ok := i.cmd.Commands[commandName]
+		if ok {
+			if cmd.Only.Owner && !isOwner {
+				ctx.Reply(ctx.Localizer.MustLocalize(&i18n.LocalizeConfig{
+					DefaultMessage: &i18n.Message{
+						ID:    "only.owner",
+						Other: "❌ Esse comando só pode ser utilizado pelo meu dono",
+					},
+				}))
+			}
 
+			if cmd.Only.Admin && !isGroupAdmin {
+				ctx.Reply(ctx.Localizer.MustLocalize(&i18n.LocalizeConfig{
+					DefaultMessage: &i18n.Message{
+						ID:    "only.admin",
+						Other: "❌ Esse comando só pode ser utilizado por administradores do grupo",
+					},
+				}))
+			}
+
+			if cmd.Only.Group && !m.Info.IsGroup {
+				ctx.Reply(ctx.Localizer.MustLocalize(&i18n.LocalizeConfig{
+					DefaultMessage: &i18n.Message{
+						ID:    "only.group",
+						Other: "❌ Esse comando só pode ser utilizado em grupos",
+					},
+				}))
+			}
+
+			if cmd.Only.Premium && !userInfo.IsPremium {
+				ctx.Reply(ctx.Localizer.MustLocalize(&i18n.LocalizeConfig{
+					DefaultMessage: &i18n.Message{
+						ID:    "only.admin",
+						Other: "❌ Esse comando só pode ser utilizado por administradores do grupo",
+					},
+				}))
+			}
+
+			if cmd.Need.BotAdmin && !isBotGroupAdmin {
+				ctx.Reply(ctx.Localizer.MustLocalize(&i18n.LocalizeConfig{
+					DefaultMessage: &i18n.Message{
+						ID:    "need.botadmin",
+						Other: "❌ O bot precisa ser administrador para executar esse comando",
+					},
+				}))
+			}
+
+			jid, err := tmsg.GetQuotedJid(m)
+			if err != nil {
+				i.Log.Error().Err(err).Msg("Error getting quoted jids")
+			}
+
+			if cmd.Need.Mention && len(tmsg.GetMentionedJIDS(m.Message)) == 0 && jid.IsEmpty() {
+				ctx.Reply(ctx.Localizer.MustLocalize(&i18n.LocalizeConfig{
+					DefaultMessage: &i18n.Message{
+						ID:    "need.mention",
+						Other: "❌ Você precisa mencionar ou responder a mensagem de alguém",
+					},
+				}))
+			}
+
+			defer func() {
+				if r := recover(); r != nil {
+					i.Log.Error().Any("Panic", r).Str("Command", commandName).Send()
+				}
+			}()
+
+			if err := cmd.Run(ctx); err != nil {
+				i.Log.Error().Err(err).Str("Command", commandName).Send()
+				ctx.Reply(ctx.Localizer.MustLocalize(&i18n.LocalizeConfig{
+					DefaultMessage: &i18n.Message{
+						ID:    "error",
+						Other: "😵 Ops! Alguma coisa deu errado.",
+					},
+				}))
+			}
+
+		} else if len(commandName) < 14 {
+			ma, err := strsim.FindBestMatch(commandName, i.cmd.Aliases)
+			if err != nil {
+				log.Error().Err(err).Send()
+				return
+			}
+			if ma.BestMatch.Score >= 0.6 {
+				ctx.Reply(ctx.Localizer.MustLocalize(&i18n.LocalizeConfig{
+					DefaultMessage: &i18n.Message{
+						ID:    "suggestioncommand",
+						Other: "⚙️ O comando `{{.Command}}` não foi encontrado. Você quis dizer `{{.Suggestion}}`? Similaridade: {{.Similarity}}%.",
+					},
+					TemplateData: map[string]any{
+						"Command":    commandName,
+						"Suggestion": ma.BestMatch.Target,
+						"Similarity": fmt.Sprintf("%.0f", ma.BestMatch.Score*100),
+					},
+				}))
+			}
+		}
+	}
 }

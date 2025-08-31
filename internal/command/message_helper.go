@@ -6,7 +6,6 @@ import (
 
 	"meowabot/internal/tools/media"
 
-	"github.com/rs/zerolog/log"
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/proto/waE2E"
 	"go.mau.fi/whatsmeow/types"
@@ -25,11 +24,27 @@ type MessageOptions struct {
 	ExternalAdReply *waProto.ContextInfo_ExternalAdReplyInfo
 }
 
-func (ctx *CommandContext) DeleteMessage(chatID types.JID, senderJID types.JID, message *events.Message) {
+func (ctx *CommandContext) Reply(text string) {
+	message := &waProto.Message{
+		ExtendedTextMessage: &waProto.ExtendedTextMessage{
+			Text: &text,
+			ContextInfo: &waProto.ContextInfo{
+				StanzaID:      &ctx.Msg.Info.ID,
+				Participant:   proto.String(ctx.Msg.Info.Sender.String()),
+				QuotedMessage: ctx.Msg.Message,
+			},
+		},
+	}
+	_, err := ctx.Client.SendMessage(context.TODO(), ctx.Msg.Info.Chat, message)
+	if err != nil {
+		ctx.Log.Error().Err(err).Msg("Error sending text message")
+	}
+}
 
+func (ctx *CommandContext) DeleteMessage(chatID types.JID, senderJID types.JID, message *events.Message) {
 	_, err := ctx.Client.SendMessage(context.TODO(), chatID, ctx.Client.BuildRevoke(chatID, senderJID, message.Info.ID))
 	if err != nil {
-		log.Error().Err(err).Str("ChatID", chatID.String()).Str("MessageID", message.Info.ID).Msg("Failed to delete message")
+		ctx.Log.Error().Err(err).Str("ChatID", chatID.String()).Str("MessageID", message.Info.ID).Msg("Failed to delete message")
 	}
 }
 
@@ -53,7 +68,7 @@ func (ctx *CommandContext) SendTextMessage(to types.JID, text string, msgExtras 
 
 	_, err := ctx.Client.SendMessage(context.TODO(), to, message)
 	if err != nil {
-		log.Error().Err(err).Msg("Error sending text message")
+		ctx.Log.Error().Err(err).Msg("Error sending text message")
 	}
 }
 
@@ -67,20 +82,20 @@ func (ctx *CommandContext) ReactMessage(message *events.Message, emoji string) {
 		_, err = ctx.Client.SendMessage(context.TODO(), message.Info.Chat, ctx.Client.BuildReaction(message.Info.Chat, message.Info.Sender, message.Info.ID, emoji))
 	}
 	if err != nil {
-		log.Error().Err(err).Str("to", message.Info.Chat.String()).Msg("Error sending react message")
+		ctx.Log.Error().Err(err).Str("to", message.Info.Chat.String()).Msg("Error sending react message")
 	}
 }
 
 func (ctx *CommandContext) SendImageMessage(to types.JID, data []byte, msgExtras *MessageOptions) {
 	uploaded, err := ctx.Client.Upload(context.TODO(), data, whatsmeow.MediaImage)
 	if err != nil {
-		log.Error().Err(err).Msg("Error uploading image")
+		ctx.Log.Error().Err(err).Msg("Error uploading image")
 		return
 	}
 
 	thumbnail, err := media.ResizeImg(data, 74, 74)
 	if err != nil {
-		log.Warn().Err(err).Msg("Failed to generate image thumbnail")
+		ctx.Log.Warn().Err(err).Msg("Failed to generate image thumbnail")
 	}
 
 	message := &waProto.Message{
@@ -113,7 +128,7 @@ func (ctx *CommandContext) SendImageMessage(to types.JID, data []byte, msgExtras
 
 	_, err = ctx.Client.SendMessage(context.TODO(), to, message)
 	if err != nil {
-		log.Error().Err(err).Msg("Error sending image message")
+		ctx.Log.Error().Err(err).Msg("Error sending image message")
 	}
 
 }
@@ -121,14 +136,14 @@ func (ctx *CommandContext) SendImageMessage(to types.JID, data []byte, msgExtras
 func (ctx *CommandContext) SendVideoMessage(to types.JID, data []byte, msgExtras *MessageOptions) {
 	uploaded, err := ctx.Client.Upload(context.TODO(), data, whatsmeow.MediaVideo)
 	if err != nil {
-		log.Error().Err(err).Msg("Error uploading video")
+		ctx.Log.Error().Err(err).Msg("Error uploading video")
 		return
 	}
 
 	var thumbnail []byte
 	thumbnail, err = media.GetVideoThumbnail(data)
 	if err != nil {
-		log.Warn().Err(err).Msg("Failed to generate video thumbnail")
+		ctx.Log.Warn().Err(err).Msg("Failed to generate video thumbnail")
 	}
 
 	message := &waProto.Message{
@@ -162,7 +177,7 @@ func (ctx *CommandContext) SendVideoMessage(to types.JID, data []byte, msgExtras
 
 	_, err = ctx.Client.SendMessage(context.TODO(), to, message)
 	if err != nil {
-		log.Error().Err(err).Msg("error sending video message")
+		ctx.Log.Error().Err(err).Msg("error sending video message")
 	}
 
 }
@@ -170,7 +185,7 @@ func (ctx *CommandContext) SendVideoMessage(to types.JID, data []byte, msgExtras
 func (ctx *CommandContext) SendDocumentMessage(to types.JID, data []byte, msgExtras *MessageOptions) {
 	uploaded, err := ctx.Client.Upload(context.TODO(), data, whatsmeow.MediaDocument)
 	if err != nil {
-		log.Error().Err(err).Msg("Error uploading document")
+		ctx.Log.Error().Err(err).Msg("Error uploading document")
 		return
 	}
 
@@ -213,7 +228,7 @@ func (ctx *CommandContext) SendDocumentMessage(to types.JID, data []byte, msgExt
 
 	_, err = ctx.Client.SendMessage(context.TODO(), to, message)
 	if err != nil {
-		log.Error().Err(err).Msg("error sending video message")
+		ctx.Log.Error().Err(err).Msg("error sending video message")
 	}
 
 }
@@ -221,7 +236,7 @@ func (ctx *CommandContext) SendDocumentMessage(to types.JID, data []byte, msgExt
 func (ctx *CommandContext) SendStickerMessage(to types.JID, data []byte, msgExtras *MessageOptions) {
 	uploaded, err := ctx.Client.Upload(context.TODO(), data, whatsmeow.MediaImage)
 	if err != nil {
-		log.Error().Err(err).Msg("Error uploading sticker")
+		ctx.Log.Error().Err(err).Msg("Error uploading sticker")
 		return
 	}
 
@@ -250,14 +265,14 @@ func (ctx *CommandContext) SendStickerMessage(to types.JID, data []byte, msgExtr
 
 	_, err = ctx.Client.SendMessage(context.TODO(), to, message)
 	if err != nil {
-		log.Error().Err(err).Msg("Error sending sticker message")
+		ctx.Log.Error().Err(err).Msg("Error sending sticker message")
 	}
 }
 
 func (ctx *CommandContext) SendAudioMessage(to types.JID, data []byte, msgExtras *MessageOptions) {
 	uploaded, err := ctx.Client.Upload(context.TODO(), data, whatsmeow.MediaAudio)
 	if err != nil {
-		log.Error().Err(err).Msg("Error uploading audio")
+		ctx.Log.Error().Err(err).Msg("Error uploading audio")
 		return
 	}
 
@@ -296,6 +311,6 @@ func (ctx *CommandContext) SendAudioMessage(to types.JID, data []byte, msgExtras
 
 	_, err = ctx.Client.SendMessage(context.TODO(), to, message)
 	if err != nil {
-		log.Error().Err(err).Msg("Error sending audio message")
+		ctx.Log.Error().Err(err).Msg("Error sending audio message")
 	}
 }

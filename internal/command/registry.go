@@ -6,6 +6,7 @@ import (
 	"meowabot/internal/database"
 
 	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"github.com/rs/zerolog"
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/types/events"
 )
@@ -22,6 +23,7 @@ type CommandContext struct {
 	Prefix    string
 	Command   string
 	Localizer *i18n.Localizer
+	Log       *zerolog.Logger
 }
 
 type Requirements struct {
@@ -37,10 +39,10 @@ type Only struct {
 }
 
 type Command struct {
-	Aliases     []string
-	Run         func(ctx *CommandContext) error
-	Requirement Requirements
-	Only        Only
+	Aliases []string
+	Run     func(ctx *CommandContext) error
+	Need    Requirements
+	Only    Only
 }
 
 type CommandList struct {

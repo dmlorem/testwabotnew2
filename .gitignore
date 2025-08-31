@@ -2,3 +2,6 @@
 config.toml
 lembrar.txt
 test
+test*
+*.exe
+*.bin

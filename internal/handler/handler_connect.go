@@ -58,7 +58,7 @@ func (i *EventHandler) Connect(ctx context.Context) error {
 				if err != nil {
 					return err
 				}
-				i.Logger.Info().Msg("Your pairing code is: " + code)
+				i.Log.Info().Msg("Your pairing code is: " + code)
 				select {
 				case <-time.After(time.Second * 120):
 					i.Client.Disconnect()
@@ -86,7 +86,7 @@ func (i *EventHandler) Connect(ctx context.Context) error {
 			go func() {
 				for evt := range qrChannel {
 					if evt.Event == "code" {
-						i.Logger.Info().Msg("Scan the QR code below using WhatsApp")
+						i.Log.Info().Msg("Scan the QR code below using WhatsApp")
 						qrterminal.GenerateHalfBlock(evt.Code, qrterminal.L, os.Stdout)
 					}
 				}

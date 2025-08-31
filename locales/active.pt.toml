@@ -1,1 +1,7 @@
-pingcmd = "Pong!"
+"cmd.ping" = "Pong!"
+error = "😵 Ops! Alguma coisa deu errado."
+"need.botadmin" = "❌ O bot precisa ser administrador para executar esse comando"
+"need.mention" = "❌ Você precisa mencionar ou responder a mensagem de alguém"
+"only.admin" = "❌ Esse comando só pode ser utilizado por administradores do grupo"
+"only.group" = "❌ Esse comando só pode ser utilizado em grupos"
+"only.owner" = "❌ Esse comando só pode ser utilizado pelo meu dono"

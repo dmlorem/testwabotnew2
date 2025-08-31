@@ -13,7 +13,7 @@ import (
 var defaultBundle *i18n.Bundle
 var activeRegex = regexp.MustCompile(`active\.[\w]+(?:\-\w+)?\.yaml`)
 
-func LoadBundle() {
+func init() {
 	defaultBundle = i18n.NewBundle(language.English)
 	defaultBundle.RegisterUnmarshalFunc("yaml", yaml.Unmarshal)
 

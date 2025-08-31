@@ -23,7 +23,7 @@ func main() {
 			Out:        os.Stdout,
 			TimeFormat: time.TimeOnly,
 			FormatMessage: func(s any) string {
-				if s, ok := s.(string); !ok {
+				if s, ok := s.(string); ok {
 					return s
 				}
 				return ""
